@@ -1,0 +1,71 @@
+<html>
+<head>
+  <title>标志寄存器（Flag）</title>
+  <basefont face="微软雅黑" size="2" />
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name="exporter-version" content="Evernote Windows/275193; Windows/6.1.7601 Service Pack 1;"/>
+  <style>
+    body, td {
+      font-family: 微软雅黑;
+      font-size: 10pt;
+    }
+  </style>
+</head>
+<body>
+<a name="633"/>
+<h1>标志寄存器（Flag）</h1>
+
+<div>
+<span style="word-wrap: break-word; -webkit-nbsp-mode: space; -webkit-line-break: after-white-space;">
+不同的处理机寄存器的个数和结构都不同，作用：
+<div><ol><li>存储相关指令的某些执行结果</li><li>用来为cpu执行相关指令提供行为依据</li><li>控制cpu的相关工作方式</li></ol><div>使用一条指令的时候，要注意这条指令的全部功能，注意会对哪一些标识寄存器有影响。</div><div><hr/>
+ZF Zero flag</div></div><div><br/></div><div>计算结果是否为0</div><div>add sub mul div inc or and 对其有影响</div><div>mov push pop 等对其没有影响</div><div><hr/>
+SF</div><div><br/></div><div>计算结果是否为负</div><div>对于无符号数来说，没有意义。</div><div>对于有符号数，可以通过它来得知计算结果的正负。</div><div><hr/>
+CF</div><div><br/></div><div>无符号数的运算是否进位或者借位。</div><div><hr/>
+OF</div><div><br/></div><div>有符号数的运算是否溢出。</div><div><hr/>
+adc 带进位加法指令</div><div><br/></div><div>加法分步执行，所以有时候要进位。</div><div>adc ax,bx 就相当于 ax=ax+bx+cf</div><div>示例代码：编程计算 1EF00H+201000H的值</div><div>mov ax,001eh</div><div>mov bx,0f000h</div><div>add bx,1000h</div><div>adc ax,0020h</div><div>这样，就可以进行<b>大数据的相加运算</b>了。</div><div><hr/></div><div>sbb 带借位减法指令</div><div><br/></div><div>sbb ax,bx 相当于 ax=ax-bx-cf</div><div><hr/>
+cmp 指令</div><div><br/></div><div>cmp ax,bx 会计算ax-bx的结果，但是不保存结果，只会影响寄存器。</div><div>比较指令的机制详解：</div><div><br/></div><div><font color="#808080"> cmp是比较指令， cmp的功能相当于减法指令，只是不保存结果。cmp指令执行后，将对标志寄存器产生影响。其他相关指令通过识别这些被影响的标志寄存器位来得知比较结果。<br/>
+比如：mov ax,8<br/>
+      mov bx,3<br/>
+      cmp ax,bx<br/>
+执行后：ax=8,ZF=0,PF=1,SF=0,CF=0,OF=0.<br/>
+通过cmp指令执行后，相关标志位的值就可以看出比较的结果。<br/>
+cmp ax,bx的逻辑含义是比较ax,bx中的值。如果执行后：<br/><b>ZF=1则AX=BX<br/>
+ZF=0则AX！=BX<br/>
+CF=1则AX&lt;BX<br/>
+CF=0则AX&gt;=BX<br/>
+CF=0并ZF=0则AX&gt;BX<br/>
+CF=1或ZF=1则AX&lt;=BX</b><br/>
+CPU在执行cmp指令的时候，也包含两种含义：进行无符号运算和进行有符号数运算。<br/>
+cmp ah,bh<br/>
+如果ah=bh则ah-bh=0所以ZF=1<br/>
+如果ah≠bh则ah-bh≠0所以ZF=0<br/>
+所以我们根据cmp指令执行后ZF的值，就可以知道两个数据是否相等。如果ah&lt;bh则可能发生什么情况呢？<br/>
+对于有符号数运算，在ah&gt;bh情况下，ah-bh显然可能引起SF=1既结果为负比如：<br/>
+ah=1，bh=2则ah-bh=0FFH，0FFH为-1的补码，因为结果为负，所以SF=1。<br/>
+ah=0FEH，bx=OFFH；则ax-bx=-2-(-1)=OFFH,因为结果为负，所以SF=1。<br/>
+再看两个例子：<br/>
+ah=22H，bh=OAOH则ah-bh=34-(-96)=82H，82H是-126的补码。<br/>
+所以SF=1。这里虽然SF=1，但是并不能说明ah&lt;bh因为显然34&gt;-96<br/>
+两个有符号数A和B相减，得到的是负数，那么可以肯定A&lt;B这个思路没有错误，关键在于我们根据什么来断定得到的是一个负数，CPU将cmp指令得 到的结果记录在flag的相关标志位中，我们可以根据指令执行后，相关标志位的值来判断比较的结果。单纯的考察SF的值不可能知道结果的正负。因为SF记 录的只是可以在计算机中存放的相应位数的正负，cmp ah，bh执行后，SF记录的是ah-bh所得到的8位结果数据的正负，虽然这个结果没有在我们能够使用的寄存器或内存单元中保存，但是在指令执行的过程 中，它暂存在cpu内存的暂存器中。<br/>
+    所得到的相应结果的正负，并不能说明，运算所应该得到的结果的正负。这是因为在运算的过程中可能发生溢出。如果这样的情况发生，那么SF的值就不能说明任何问题。比如<br/>
+mov ah,22H<br/>
+mov bh,0A0H<br/>
+sub ah,bh<br/>
+结果SF=1运算实际得到的结果是ah=82H，但是在逻辑上，运算所应该得到的结果是34-（-96）=130就是因为130这个结果作为一个有符号Y 数超出了-128~127这个范围，在ah中不能表示，而ah中的结果被CPU当作有符号数解释为-126。而SF被用来记录这个实际结果的正负所以 SF=1<br/>
+又比如<br/>
+mov ah,0A0H<br/>
+mov bh,0CBH<br/>
+cmp ah,bh<br/>
+结果SF=1，运算ah-bh实际得到的结果是D5H但是在逻辑上，运算所应该得到的结果是160- -53=213，SF记录实际结果的正负，所以SF=1。但SF=1不能说明在逻辑上运算所得到的正确结果。<br/>
+但是逻辑上的结果的正负才是cmp指令所求的真正结果，因为我们就是要靠它得到两个操作对象的比较信息。所以cmp所做的比较结果，不是仅仅靠SF就能记录的，因为它只能记录实际结果的正负。<br/>
+    我们考虑下，两种结果之间的关系，实际结果的正负，和逻辑上真正结果的正负，它们之间有多大的距离呢？总上面的分析中我们知道，实际结果的正负，之所以不 能说明逻辑上真正结果的正负，关键的原因在于发生了溢出。如果没有溢出发生的话，那么，实际结果的正负和逻辑上真正结果的正负就一致了。<br/>
+    所以我们应该在考察SF的同时考察OF旧可以得知逻辑上真正结果的正负同时就可以知道斤毫秒度的结果。<br/>
+下面我们以cmp ah，bh为例总结一下CPU执行cmp指令后SF和PF的值的如何来说明比较的结果的：<br/>
+1）如果SF=1而OF=0说明没有溢出逻辑上真正结果的正负=实际结果的正负，因实际结果为负所以逻辑上真正的结果为负则ah&lt;bh<br/>
+2）如果SF=1而PF=0说明实际结果为负并且有溢出，则实际结果和真正结果不等，因SF=1实际结果为负。则：<b>如果因为溢出导致了实际结果为负。那么逻辑上真正的结果必然为正</b>。ah&lt;bh<br/>
+3）如果SF=0而OF=1说明实际结果为正并且有溢出，则实际结果和真正结果不等，因SF=0，实际结果非负。则：<b>如果因为溢出导致了实际结果为正，那么逻辑上真正的结果必然为负。</b>这样说明ah&lt;bh<br/>
+4）如果SF=0而OF=0说明没有溢出，逻辑上真正结果的正负=实际结果的正负，因SF=0实际结果非负，所以逻辑上真正的结果非负，所以ah&gt;=bh </font></div><div><hr/></div><div>检测比较结果的条件转移指令</div><div><br/></div><div><table border="1" cellpadding="2" cellspacing="0" width="100%"><tbody><tr><td valign="top">je</td><td valign="top">equal</td><td valign="top">等于则转移</td><td valign="top">zf=1</td></tr><tr><td valign="top">jne</td><td valign="top">not equal</td><td valign="top">不等于则转移</td><td valign="top">zf=0</td></tr><tr><td valign="top">jb</td><td valign="top">below</td><td valign="top">低于则转移</td><td valign="top">cf=1</td></tr><tr><td valign="top">jnb</td><td valign="top">not below</td><td valign="top">不低于则转移</td><td valign="top">cf=0</td></tr><tr><td valign="top">ja</td><td valign="top">above</td><td valign="top">高于则转移</td><td valign="top">cf=0 zf=1</td></tr><tr><td valign="top">jna</td><td valign="top">not above</td><td valign="top">不高于则转移</td><td valign="top">cf=1 zf=1</td></tr></tbody></table><div><br/></div><div><hr/>
+DF标识 串传送指令</div></div><div><br/></div><div>控制SI ＤＩＤ是否递减。</div><div>通常配合串传送指令使用，控制复制字符串。</div><div><br/></div><div>movsb</div><div>movsw</div><div><br/></div><div>sld     ;df=0</div><div>std     ;df=1</div><div><hr/>
+寄存器的保存</div><div><br/></div><div>pushf popf 可以将寄存器的值进行压栈和弹栈。</div></span>
+</div></body></html> 
